@@ -12,7 +12,7 @@ use superslice::Ext;
 use bincode::{serialize_into, deserialize_from};
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct AnsRecord {
+pub struct AsnRecord {
     pub ip: u32,
     pub prefix_len: u8,
     pub country: String,
@@ -20,7 +20,7 @@ pub struct AnsRecord {
     pub owner: String,
 }
 
-impl AnsRecord {
+impl AsnRecord {
     pub fn network(&self) -> Ipv4Net {
         Ipv4Net::new(self.ip.into(), self.prefix_len).expect("Bad network")
     }
@@ -73,7 +73,7 @@ impl From<ErrorContext<std::num::ParseIntError, &'static str>> for AsnTsvParseEr
 }
 
 /// Reads ASN database TSV file as provided at https://iptoasn.com/
-pub fn read_asn_tsv<'d, R: io::Read>(data: &'d mut csv::Reader<R>) -> impl Iterator<Item=Result<AnsRecord, AsnTsvParseError>> + 'd {
+pub fn read_asn_tsv<'d, R: io::Read>(data: &'d mut csv::Reader<R>) -> impl Iterator<Item=Result<AsnRecord, AsnTsvParseError>> + 'd {
     data.records()
         .filter(|record| {
             if let Ok(record) = record {
@@ -97,7 +97,7 @@ pub fn read_asn_tsv<'d, R: io::Read>(data: &'d mut csv::Reader<R>) -> impl Itera
         .map(|data| {
             data.map(|(range_start, range_end, as_number, country, owner)| {
                 Ipv4Subnets::new(range_start, range_end, 8).map(move |net| {
-                    AnsRecord {
+                    AsnRecord {
                         ip: net.network().into(),
                         prefix_len: net.prefix_len(),
                         country: country.clone(),
@@ -120,7 +120,7 @@ pub fn read_asn_tsv<'d, R: io::Read>(data: &'d mut csv::Reader<R>) -> impl Itera
         })
 }
 
-pub struct AsnDb(Vec<AnsRecord>);
+pub struct AsnDb(Vec<AsnRecord>);
 
 #[derive(Debug)]
 pub enum AsnDbError {
@@ -180,7 +180,7 @@ impl AsnDb {
         Ok(AsnDb(deserialize_from(BufReader::new(db_file)).wrap_error_while("reading bincode DB file")?))
     }
 
-    pub fn lookup(&self, ip: Ipv4Addr) -> Option<&AnsRecord> {
+    pub fn lookup(&self, ip: Ipv4Addr) -> Option<&AsnRecord> {
         let index = self.0.upper_bound_by_key(&ip.into(), |record| record.ip);
         if index != 0 {
             let record = &self.0[index - 1];

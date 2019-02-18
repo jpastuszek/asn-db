@@ -11,4 +11,4 @@ superslice = "0.1.0"
 bincode = "1.0.1"
 serde = "1.0.85"
 csv = "1.0.5"
-error-context = { git = "https://github.com/jpastuszek/error-context.git" }
+error-context = "0.1.0"

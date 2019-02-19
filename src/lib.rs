@@ -1,11 +1,13 @@
 /*!
-Look up IP (v4 only) address for matching ASN information containing:
+Look up ASN information by IP address containing:
 * network base IP address and mask (u32 number in host byte order and number of bits of netmask or `ipnet::Ipv4Net` value),
-* assinged AS number (e.g. 13335),
+* assigned AS number (e.g. 13335),
 * owner country code (e.g. "US"),
 * owner information (e.g. "CLOUDFLARENET - Cloudflare, Inc.").
 
-# Usage
+# Example
+
+Load database from `ip2asn-v4.tsv` file and look up `1.1.1.1` IP address.
 
 ```rust
 use asn_db::Db;
@@ -30,6 +32,13 @@ Record {
 }
 1.1.1.0/24
 ```
+
+# Usage
+
+Use `Db::from_tsv(reader)` to load database from `ip2asn-v4.tsv` formatted file.
+You can then use `db.store(writer)` to store prepared, binary encoded data for fast loading with `Db::load(reader)`.
+
+Look up records with `db.lookup(ip)`.
 */
 use bincode::{deserialize_from, serialize_into};
 use error_context::*;

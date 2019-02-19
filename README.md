@@ -1,12 +1,14 @@
-Rust library for looking up IP (v4 only) address for matching ASN information containing:
+Rust library that allows to look up ASN information by IP address containing:
 * network base IP address and mask (u32 number in host byte order and number of bits of netmask or `ipnet::Ipv4Net` value),
-* assinged AS number (e.g. 13335),
+* assigned AS number (e.g. 13335),
 * owner country code (e.g. "US"),
 * owner information (e.g. "CLOUDFLARENET - Cloudflare, Inc.").
 
-This crate requires data file `ip2asn-v4.tsv` from [IPtoASN](https://iptoasn.com/).
+This crate requires data file `ip2asn-v4.tsv` from [IPtoASN](https://iptoasn.com/) and only supports IP v4 addresses.
 
-# Usage
+# Example
+
+Load database from `ip2asn-v4.tsv` file and look up `1.1.1.1` IP address.
 
 ```rust
 use asn_db::Db;

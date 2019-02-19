@@ -1,10 +1,35 @@
 /*!
- * Look up IP (v4 only) address for matching ASN information containing:
- * * network base IP address and mask (u32 number in host byte order and number of bits of netmask or `ipnet::Ipv4Net` value),
- * * assinged AS number (e.g. 13335),
- * * owner country code (e.g. "US"),
- * * owner information (e.g. "CLOUDFLARENET - Cloudflare, Inc.").
- */
+Look up IP (v4 only) address for matching ASN information containing:
+* network base IP address and mask (u32 number in host byte order and number of bits of netmask or `ipnet::Ipv4Net` value),
+* assinged AS number (e.g. 13335),
+* owner country code (e.g. "US"),
+* owner information (e.g. "CLOUDFLARENET - Cloudflare, Inc.").
+
+# Usage
+
+```rust
+use asn_db::Db;
+use std::fs::File;
+use std::io::BufReader;
+use flate2::read::GzDecoder; 
+
+let db = Db::form_tsv_file(GzDecoder::new(BufReader::new(File::open("ip2asn-v4.tsv.gz").unwrap()))).unwrap();
+let record = db.lookup("1.1.1.1".parse().unwrap()).unwrap();
+
+println!("{:#?}", record);
+```
+
+This prints:
+```noformat
+Record {
+    ip: 16843008,
+    prefix_len: 24,
+    as_number: 13335,
+    country: "US",
+    owner: "CLOUDFLARENET - Cloudflare, Inc."
+}
+```
+*/
 use bincode::{deserialize_from, serialize_into};
 use error_context::*;
 use serde_derive::{Deserialize, Serialize};
@@ -206,7 +231,7 @@ impl From<ErrorContext<bincode::Error, &'static str>> for DbError {
 pub struct Db(Vec<Record>);
 
 impl Db {
-    /// Load database from TSV file as provided by https://iptoasn.com/ - only ip2asn-v4.tsv format is supported a the moment
+    /// Load database from TSV file as provided by [IPtoASN](https://iptoasn.com/) - only `ip2asn-v4.tsv` file format is supported a the moment
     pub fn form_tsv_file(data: impl Read) -> Result<Db, DbError> {
         let mut rdr = csv::ReaderBuilder::new()
             .delimiter(b'\t')
@@ -265,11 +290,39 @@ impl Db {
 mod tests {
     use super::*;
     use std::fs::File;
-    use std::io::BufReader;
+    use std::io::{BufReader, BufWriter};
+    use flate2::read::GzDecoder; 
+    use tempfile::tempdir;
 
     #[test]
-    fn test_lookup() {
-        let db = Db::load(BufReader::new(File::open("db.bincode").unwrap())).unwrap();
+    fn test_db() {
+        let db = Db::form_tsv_file(GzDecoder::new(BufReader::new(File::open("ip2asn-v4.tsv.gz").unwrap()))).unwrap();
+        assert!(db
+            .lookup("1.1.1.1".parse().unwrap())
+            .unwrap()
+            .owner
+            .contains("CLOUDFLARENET"));
+        assert!(db
+            .lookup("8.8.8.8".parse().unwrap())
+            .unwrap()
+            .owner
+            .contains("GOOGLE"));
+        assert!(db
+            .lookup("8.8.4.4".parse().unwrap())
+            .unwrap()
+            .owner
+            .contains("GOOGLE"));
+
+        let temp_dir = tempdir().unwrap();
+        let db_file = temp_dir.path().join("asn-db.dat");
+
+        db.store(BufWriter::new(File::create(&db_file).unwrap())).unwrap();
+
+        let db = Db::load(BufReader::new(File::open(&db_file).unwrap())).unwrap();
+
+        drop(db_file);
+        drop(temp_dir);
+
         assert!(db
             .lookup("1.1.1.1".parse().unwrap())
             .unwrap()

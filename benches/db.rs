@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::{Read, BufReader};
 
 fn db_data() -> impl Read {
-    BufReader::new(File::open("db.bincode").unwrap())
+    BufReader::new(File::open("asn-db.dat").unwrap())
 }
 
 fn bench_load(c: &mut Criterion) {

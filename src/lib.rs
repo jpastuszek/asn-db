@@ -16,6 +16,7 @@ let db = Db::form_tsv(BufReader::new(File::open("ip2asn-v4.tsv").unwrap())).unwr
 let record = db.lookup("1.1.1.1".parse().unwrap()).unwrap();
 
 println!("{:#?}", record);
+println!("{:#?}", record.network());
 ```
 
 This prints:
@@ -27,6 +28,7 @@ Record {
     country: "US",
     owner: "CLOUDFLARENET - Cloudflare, Inc."
 }
+1.1.1.0/24
 ```
 */
 use bincode::{deserialize_from, serialize_into};
@@ -114,7 +116,7 @@ impl From<ErrorContext<std::num::ParseIntError, &'static str>> for TsvParseError
     }
 }
 
-/// Reads ASN database TSV file provided at https://iptoasn.com/ as iterator of `Record`s
+/// Reads ASN database TSV file (`ip2asn-v4.tsv` format) provided by [IPtoASN](https://iptoasn.com/) as iterator of `Record`s
 pub fn read_asn_tsv<'d, R: io::Read>(
     data: &'d mut csv::Reader<R>,
 ) -> impl Iterator<Item = Result<Record, TsvParseError>> + 'd {

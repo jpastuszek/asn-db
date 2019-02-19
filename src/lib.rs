@@ -12,7 +12,7 @@ use asn_db::Db;
 use std::fs::File;
 use std::io::BufReader;
 
-let db = Db::form_tsv_file(BufReader::new(File::open("ip2asn-v4.tsv").unwrap())).unwrap();
+let db = Db::form_tsv(BufReader::new(File::open("ip2asn-v4.tsv").unwrap())).unwrap();
 let record = db.lookup("1.1.1.1".parse().unwrap()).unwrap();
 
 println!("{:#?}", record);
@@ -237,7 +237,7 @@ impl fmt::Debug for Db {
 
 impl Db {
     /// Load database from TSV file as provided by [IPtoASN](https://iptoasn.com/) - only `ip2asn-v4.tsv` file format is supported a the moment
-    pub fn form_tsv_file(data: impl Read) -> Result<Db, DbError> {
+    pub fn form_tsv(data: impl Read) -> Result<Db, DbError> {
         let mut rdr = csv::ReaderBuilder::new()
             .delimiter(b'\t')
             .has_headers(false)
@@ -301,7 +301,7 @@ mod tests {
 
     #[test]
     fn test_db() {
-        let db = Db::form_tsv_file(BufReader::new(File::open("ip2asn-v4.tsv").unwrap())).unwrap();
+        let db = Db::form_tsv(BufReader::new(File::open("ip2asn-v4.tsv").unwrap())).unwrap();
 
         assert!(db
             .lookup("1.1.1.1".parse().unwrap())

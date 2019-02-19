@@ -1,28 +1,43 @@
+/*!
+ * Look up IP (v4 only) address for matching ASN information containing:
+ * * network base IP address and mask (u32 number in host byte order and number of bits of netmask or `ipnet::Ipv4Net` value),
+ * * assinged AS number (e.g. 13335),
+ * * owner country code (e.g. "US"),
+ * * owner information (e.g. "CLOUDFLARENET - Cloudflare, Inc.").
+ */
 use bincode::{deserialize_from, serialize_into};
 use error_context::*;
-use ipnet::*;
 use serde_derive::{Deserialize, Serialize};
 use std::error::Error;
 use std::fmt;
 use std::io;
 use std::io::{Read, Write};
-use std::net::Ipv4Addr;
+use ipnet::Ipv4Subnets;
+pub use std::net::Ipv4Addr;
+pub use ipnet::Ipv4Net;
 
 const DATABASE_DATA_TAG: &[u8; 4] = b"ASDB";
 const DATABASE_DATA_VERSION: &[u8; 4] = b"bin1";
 
+/// Autonomous system number record
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Record {
+    /// Network base IP address (as u32 in host byte order)
     pub ip: u32,
+    /// Network mask prefix in number of bits, e.g. 24 for 255.255.255.0 mask
     pub prefix_len: u8,
+    /// Assigned AS number
     pub as_number: u32,
+    /// Country code of network owner
     pub country: String,
+    /// Network owner information
     pub owner: String,
 }
 
 impl Record {
+    /// Get `Ipv4Net` representation of the network address
     pub fn network(&self) -> Ipv4Net {
-        Ipv4Net::new(self.ip.into(), self.prefix_len).expect("Bad network")
+        Ipv4Net::new(self.ip.into(), self.prefix_len).expect("bad network")
     }
 }
 
@@ -75,7 +90,7 @@ impl From<ErrorContext<std::num::ParseIntError, &'static str>> for TsvParseError
     }
 }
 
-/// Reads ASN database TSV file as provided at https://iptoasn.com/
+/// Reads ASN database TSV file provided at https://iptoasn.com/ as iterator of `Record`s
 pub fn read_asn_tsv<'d, R: io::Read>(
     data: &'d mut csv::Reader<R>,
 ) -> impl Iterator<Item = Result<Record, TsvParseError>> + 'd {
@@ -129,11 +144,6 @@ pub fn read_asn_tsv<'d, R: io::Read>(
                 .chain(errors.into_iter().map(Err))
         })
 }
-
-// TODO: try loading ip vec separately for search
-// TODO: use stdlib search?
-// TODO: use eytzinger layout
-pub struct Db(Vec<Record>);
 
 #[derive(Debug)]
 pub enum DbError {
@@ -189,8 +199,14 @@ impl From<ErrorContext<bincode::Error, &'static str>> for DbError {
     }
 }
 
-//TODO: write data file and mmap it so we don't waste memory
+//TODO: use eytzinger layout - requires non exact search support
+//TODO: support for mmap'ed files to reduce memory usage?
+//TODO: IPv6 support
+/// Loaded ASN database that is optimized for looking up ASN by IP address
+pub struct Db(Vec<Record>);
+
 impl Db {
+    /// Load database from TSV file as provided by https://iptoasn.com/ - only ip2asn-v4.tsv format is supported a the moment
     pub fn form_tsv_file(data: impl Read) -> Result<Db, DbError> {
         let mut rdr = csv::ReaderBuilder::new()
             .delimiter(b'\t')
@@ -200,6 +216,7 @@ impl Db {
         Ok(Db(records))
     }
 
+    /// Load previously stored database - this method is much faster than loading TSV file
     pub fn load(mut db_data: impl Read) -> Result<Db, DbError> {
         let mut tag = [0; 4];
         db_data.read_exact(&mut tag).wrap_error_while("reading database tag")?;
@@ -219,6 +236,7 @@ impl Db {
         Ok(Db(records))
     }
 
+    /// Store database as binary data
     pub fn store(&self, mut db_data: impl Write) -> Result<(), DbError> {
         db_data.write(DATABASE_DATA_TAG).wrap_error_while("error writing tag")?;
         db_data.write(DATABASE_DATA_VERSION).wrap_error_while("error writing version")?;
@@ -226,10 +244,11 @@ impl Db {
         Ok(())
     }
 
+    /// Lookup ASN information by IP address where given IP belongs to AS network
     pub fn lookup(&self, ip: Ipv4Addr) -> Option<&Record> {
         match self.0.binary_search_by_key(&ip.into(), |record| record.ip) {
-            Ok(index) => return Some(&self.0[index]), // network IP
-            Err(index) => {
+            Ok(index) => return Some(&self.0[index]), // IP was network base IP
+            Err(index) => { // upper bound/insert index
                 if index != 0 {
                     let record = &self.0[index - 1];
                     if record.network().contains(&ip) {

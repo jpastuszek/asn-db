@@ -17,7 +17,7 @@ fn bench_load(c: &mut Criterion) {
     );
 }
 
-fn bench_lookup(c: &mut Criterion) {
+fn bench_lookup_list(c: &mut Criterion) {
     let db = Db::load(db_data()).unwrap();
     let ips = [
         "41.233.24.141",
@@ -126,7 +126,7 @@ fn bench_lookup(c: &mut Criterion) {
 
     c.bench(
         "AnsDb",
-        Benchmark::new("lookup", move |b| {
+        Benchmark::new("lookup - list", move |b| {
             b.iter(|| {
                 assert!(
                     ips.iter()
@@ -141,5 +141,27 @@ fn bench_lookup(c: &mut Criterion) {
     );
 }
 
-criterion_group!(benches, bench_load, bench_lookup);
+fn bench_lookup_random(c: &mut Criterion) {
+    use rand::Rng;
+    use rand::distributions::Standard;
+    use std::net::Ipv4Addr;
+
+    let db = Db::load(db_data()).unwrap();
+    let ips_count = 10_000;
+    let ips = rand::thread_rng().sample_iter(&Standard).take(ips_count).map(|v: u32| Ipv4Addr::from(v)).collect::<Vec<_>>();
+
+    c.bench(
+        "AnsDb",
+        Benchmark::new("lookup - random", move |b| {
+            b.iter(|| {
+                ips.iter()
+                    .map(|ip| db.lookup(*ip).map(|r| r.as_number).unwrap_or(0))
+                    .sum::<u32>()
+            })
+        })
+        .throughput(Throughput::Elements(ips_count as u32)),
+    );
+}
+
+criterion_group!(benches, bench_lookup_list, bench_lookup_random, bench_load);
 criterion_main!(benches);

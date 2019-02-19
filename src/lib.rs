@@ -11,9 +11,8 @@ Look up IP (v4 only) address for matching ASN information containing:
 use asn_db::Db;
 use std::fs::File;
 use std::io::BufReader;
-use flate2::read::GzDecoder; 
 
-let db = Db::form_tsv_file(GzDecoder::new(BufReader::new(File::open("ip2asn-v4.tsv.gz").unwrap()))).unwrap();
+let db = Db::form_tsv_file(BufReader::new(File::open("ip2asn-v4.tsv").unwrap())).unwrap();
 let record = db.lookup("1.1.1.1".parse().unwrap()).unwrap();
 
 println!("{:#?}", record);
@@ -230,11 +229,18 @@ impl From<ErrorContext<bincode::Error, &'static str>> for DbError {
 /// Loaded ASN database that is optimized for looking up ASN by IP address
 pub struct Db(Vec<Record>);
 
+impl fmt::Debug for Db {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "asn_db::Db[total records: {}]", self.0.len())
+    }
+}
+
 impl Db {
     /// Load database from TSV file as provided by [IPtoASN](https://iptoasn.com/) - only `ip2asn-v4.tsv` file format is supported a the moment
     pub fn form_tsv_file(data: impl Read) -> Result<Db, DbError> {
         let mut rdr = csv::ReaderBuilder::new()
             .delimiter(b'\t')
+            .has_headers(false)
             .from_reader(data);
         let mut records = read_asn_tsv(&mut rdr).collect::<Result<Vec<_>, _>>()?;
         records.sort_by_key(|record| record.ip);
@@ -291,12 +297,12 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::{BufReader, BufWriter};
-    use flate2::read::GzDecoder; 
     use tempfile::tempdir;
 
     #[test]
     fn test_db() {
-        let db = Db::form_tsv_file(GzDecoder::new(BufReader::new(File::open("ip2asn-v4.tsv.gz").unwrap()))).unwrap();
+        let db = Db::form_tsv_file(BufReader::new(File::open("ip2asn-v4.tsv").unwrap())).unwrap();
+
         assert!(db
             .lookup("1.1.1.1".parse().unwrap())
             .unwrap()

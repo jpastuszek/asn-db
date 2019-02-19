@@ -7,7 +7,6 @@ edition = "2018"
 [dependencies]
 serde_derive = "1.0.85"
 ipnet = "2.0.0"
-superslice = "0.1.0"
 bincode = "1.0.1"
 serde = "1.0.85"
 csv = "1.0.5"

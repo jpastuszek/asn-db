@@ -1,22 +1,21 @@
-use serde_derive::{Serialize, Deserialize};
+use bincode::{deserialize_from, serialize_into};
 use error_context::*;
 use ipnet::*;
-use std::net::Ipv4Addr;
-use std::io;
-use std::fmt;
+use serde_derive::{Deserialize, Serialize};
 use std::error::Error;
-use std::io::{BufReader, BufWriter};
+use std::fmt;
 use std::fs::File;
+use std::io;
+use std::io::{BufReader, BufWriter};
+use std::net::Ipv4Addr;
 use std::path::Path;
-use superslice::Ext;
-use bincode::{serialize_into, deserialize_from};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AsnRecord {
     pub ip: u32,
     pub prefix_len: u8,
     pub country: String,
-    pub as_number: u32, 
+    pub as_number: u32,
     pub owner: String,
 }
 
@@ -26,7 +25,8 @@ impl AsnRecord {
     }
 }
 
-#[derive(Debug)] pub enum AsnTsvParseError {
+#[derive(Debug)]
+pub enum AsnTsvParseError {
     TsvError(csv::Error),
     AddrFieldParseError(std::net::AddrParseError, &'static str),
     IntFieldParseError(std::num::ParseIntError, &'static str),
@@ -36,8 +36,12 @@ impl fmt::Display for AsnTsvParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             AsnTsvParseError::TsvError(_) => write!(f, "TSV format error"),
-            AsnTsvParseError::AddrFieldParseError(_, context) => write!(f, "error parsing IP address while {}", context),
-            AsnTsvParseError::IntFieldParseError(_, context) => write!(f, "error parsing integer while {}", context),
+            AsnTsvParseError::AddrFieldParseError(_, context) => {
+                write!(f, "error parsing IP address while {}", context)
+            }
+            AsnTsvParseError::IntFieldParseError(_, context) => {
+                write!(f, "error parsing integer while {}", context)
+            }
         }
     }
 }
@@ -64,7 +68,6 @@ impl From<ErrorContext<std::net::AddrParseError, &'static str>> for AsnTsvParseE
     }
 }
 
-
 impl From<ErrorContext<std::num::ParseIntError, &'static str>> for AsnTsvParseError {
     fn from(ec: ErrorContext<std::num::ParseIntError, &'static str>) -> AsnTsvParseError {
         AsnTsvParseError::IntFieldParseError(ec.error, ec.context)
@@ -72,7 +75,9 @@ impl From<ErrorContext<std::num::ParseIntError, &'static str>> for AsnTsvParseEr
 }
 
 /// Reads ASN database TSV file as provided at https://iptoasn.com/
-pub fn read_asn_tsv<'d, R: io::Read>(data: &'d mut csv::Reader<R>) -> impl Iterator<Item=Result<AsnRecord, AsnTsvParseError>> + 'd {
+pub fn read_asn_tsv<'d, R: io::Read>(
+    data: &'d mut csv::Reader<R>,
+) -> impl Iterator<Item = Result<AsnRecord, AsnTsvParseError>> + 'd {
     data.records()
         .filter(|record| {
             if let Ok(record) = record {
@@ -85,8 +90,11 @@ pub fn read_asn_tsv<'d, R: io::Read>(data: &'d mut csv::Reader<R>) -> impl Itera
         .map(|record| record.map_err(Into::<AsnTsvParseError>::into))
         .map(|record| {
             record.and_then(|record| {
-                let range_start: Ipv4Addr = record[0].parse().wrap_error_while("parsing range_start IP")?;
-                let range_end: Ipv4Addr = record[1].parse().wrap_error_while("parsing range_end IP")?;
+                let range_start: Ipv4Addr = record[0]
+                    .parse()
+                    .wrap_error_while("parsing range_start IP")?;
+                let range_end: Ipv4Addr =
+                    record[1].parse().wrap_error_while("parsing range_end IP")?;
                 let as_number: u32 = record[2].parse().wrap_error_while("parsing as_number")?;
                 let country = record[3].to_owned();
                 let owner = record[4].to_owned();
@@ -95,14 +103,12 @@ pub fn read_asn_tsv<'d, R: io::Read>(data: &'d mut csv::Reader<R>) -> impl Itera
         })
         .map(|data| {
             data.map(|(range_start, range_end, as_number, country, owner)| {
-                Ipv4Subnets::new(range_start, range_end, 8).map(move |net| {
-                    AsnRecord {
-                        ip: net.network().into(),
-                        prefix_len: net.prefix_len(),
-                        country: country.clone(),
-                        as_number,
-                        owner: owner.clone(),
-                    }
+                Ipv4Subnets::new(range_start, range_end, 8).map(move |net| AsnRecord {
+                    ip: net.network().into(),
+                    prefix_len: net.prefix_len(),
+                    country: country.clone(),
+                    as_number,
+                    owner: owner.clone(),
                 })
             })
         })
@@ -115,7 +121,11 @@ pub fn read_asn_tsv<'d, R: io::Read>(data: &'d mut csv::Reader<R>) -> impl Itera
                 Err(err) => errors = Some(AsnTsvParseError::from(err)),
             }
 
-            records.into_iter().flatten().map(Ok).chain(errors.into_iter().map(Err))
+            records
+                .into_iter()
+                .flatten()
+                .map(Ok)
+                .chain(errors.into_iter().map(Err))
         })
 }
 
@@ -135,8 +145,14 @@ impl fmt::Display for AsnDbError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             AsnDbError::TsvError(_) => write!(f, "error opening ASN DB from TSV file"),
-            AsnDbError::FileError(_, context) => write!(f, "error opening ASN DB from file while {}", context),
-            AsnDbError::BincodeError(_, context) => write!(f, "error (de)serializing ASN DB to bincode format while {}", context),
+            AsnDbError::FileError(_, context) => {
+                write!(f, "error opening ASN DB from file while {}", context)
+            }
+            AsnDbError::BincodeError(_, context) => write!(
+                f,
+                "error (de)serializing ASN DB to bincode format while {}",
+                context
+            ),
         }
     }
 }
@@ -174,7 +190,11 @@ impl From<ErrorContext<bincode::Error, &'static str>> for AsnDbError {
 impl AsnDb {
     //TODO: Read and Write not paths
     pub fn form_tsv_file(path: impl AsRef<Path>) -> Result<AsnDb, AsnDbError> {
-        let mut rdr = csv::ReaderBuilder::new().delimiter(b'\t').from_reader(BufReader::new(File::open(path).wrap_error_while("opending TSV file")?));
+        let mut rdr = csv::ReaderBuilder::new()
+            .delimiter(b'\t')
+            .from_reader(BufReader::new(
+                File::open(path).wrap_error_while("opending TSV file")?,
+            ));
         let mut records = read_asn_tsv(&mut rdr).collect::<Result<Vec<_>, _>>()?;
         records.sort_by_key(|record| record.ip);
         let index = records.iter().map(|r| r.ip).collect();
@@ -183,7 +203,8 @@ impl AsnDb {
 
     pub fn from_stored_file(path: impl AsRef<Path>) -> Result<AsnDb, AsnDbError> {
         let db_file = File::open(&path).wrap_error_while("opening stored ASN DB file")?;
-        let records: Vec<AsnRecord> = deserialize_from(BufReader::new(db_file)).wrap_error_while("reading bincode DB file")?;
+        let records: Vec<AsnRecord> = deserialize_from(BufReader::new(db_file))
+            .wrap_error_while("reading bincode DB file")?;
         let index = records.iter().map(|r| r.ip).collect();
         Ok(AsnDb(records, index))
     }
@@ -197,12 +218,15 @@ impl AsnDb {
     }
 
     pub fn lookup(&self, ip: Ipv4Addr) -> Option<&AsnRecord> {
-        //TODO: is this correct?
-        let index = self.1.upper_bound(&ip.into());
-        if index != 0 {
-            let record = &self.0[index - 1];
-            if record.network().contains(&ip) {
-                return Some(record)
+        match self.1.binary_search(&ip.into()) {
+            Ok(index) => return Some(&self.0[index]), // network IP
+            Err(index) => {
+                if index != 0 {
+                    let record = &self.0[index - 1];
+                    if record.network().contains(&ip) {
+                        return Some(record);
+                    }
+                }
             }
         }
         None
@@ -216,8 +240,20 @@ mod tests {
     #[test]
     fn test_lookup() {
         let db = AsnDb::from_stored_file("db.bincode").unwrap();
-        assert!(db.lookup("1.1.1.1".parse().unwrap()).unwrap().owner.contains("CLOUDFLARENET"));
-        assert!(db.lookup("8.8.8.8".parse().unwrap()).unwrap().owner.contains("GOOGLE"));
-        assert!(db.lookup("8.8.4.4".parse().unwrap()).unwrap().owner.contains("GOOGLE"));
+        assert!(db
+            .lookup("1.1.1.1".parse().unwrap())
+            .unwrap()
+            .owner
+            .contains("CLOUDFLARENET"));
+        assert!(db
+            .lookup("8.8.8.8".parse().unwrap())
+            .unwrap()
+            .owner
+            .contains("GOOGLE"));
+        assert!(db
+            .lookup("8.8.4.4".parse().unwrap())
+            .unwrap()
+            .owner
+            .contains("GOOGLE"));
     }
 }

@@ -132,7 +132,7 @@ pub fn read_asn_tsv<'d, R: io::Read>(
 // TODO: try loading ip vec separately for search
 // TODO: use stdlib search?
 // TODO: use eytzinger layout
-pub struct AsnDb(Vec<AsnRecord>, Vec<u32>);
+pub struct AsnDb(Vec<AsnRecord>);
 
 #[derive(Debug)]
 pub enum AsnDbError {
@@ -197,16 +197,14 @@ impl AsnDb {
             ));
         let mut records = read_asn_tsv(&mut rdr).collect::<Result<Vec<_>, _>>()?;
         records.sort_by_key(|record| record.ip);
-        let index = records.iter().map(|r| r.ip).collect();
-        Ok(AsnDb(records, index))
+        Ok(AsnDb(records))
     }
 
     pub fn from_stored_file(path: impl AsRef<Path>) -> Result<AsnDb, AsnDbError> {
         let db_file = File::open(&path).wrap_error_while("opening stored ASN DB file")?;
         let records: Vec<AsnRecord> = deserialize_from(BufReader::new(db_file))
             .wrap_error_while("reading bincode DB file")?;
-        let index = records.iter().map(|r| r.ip).collect();
-        Ok(AsnDb(records, index))
+        Ok(AsnDb(records))
     }
 
     // TODO: write 4 byts ID "ASDB" + 4 byte version (for allignment)
@@ -218,7 +216,7 @@ impl AsnDb {
     }
 
     pub fn lookup(&self, ip: Ipv4Addr) -> Option<&AsnRecord> {
-        match self.1.binary_search(&ip.into()) {
+        match self.0.binary_search_by_key(&ip.into(), |record| record.ip) {
             Ok(index) => return Some(&self.0[index]), // network IP
             Err(index) => {
                 if index != 0 {

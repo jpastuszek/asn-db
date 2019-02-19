@@ -1,18 +1,24 @@
 use asn_db::Db;
 use criterion::*;
+use std::fs::File;
+use std::io::{Read, BufReader};
+
+fn db_data() -> impl Read {
+    BufReader::new(File::open("db.bincode").unwrap())
+}
 
 fn bench_load(c: &mut Criterion) {
     c.bench(
         "AnsDb",
         Benchmark::new("load", move |b| {
-            b.iter_with_large_drop(|| Db::from_stored_file("db.bincode").unwrap())
+            b.iter_with_large_drop(|| Db::load(db_data()).unwrap())
         })
         .sample_size(10),
     );
 }
 
 fn bench_lookup(c: &mut Criterion) {
-    let db = Db::from_stored_file("db.bincode").unwrap();
+    let db = Db::load(db_data()).unwrap();
     let ips = [
         "41.233.24.141",
         "113.195.171.20",

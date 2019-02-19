@@ -4,19 +4,19 @@ use ipnet::*;
 use serde_derive::{Deserialize, Serialize};
 use std::error::Error;
 use std::fmt;
-use std::fs::File;
 use std::io;
-use std::io::{BufReader, BufWriter};
+use std::io::{Read, Write};
 use std::net::Ipv4Addr;
-use std::path::Path;
 
-//TODO: reorder fields?
+const DATABASE_DATA_TAG: &[u8; 4] = b"ASDB";
+const DATABASE_DATA_VERSION: &[u8; 4] = b"bin1";
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Record {
     pub ip: u32,
     pub prefix_len: u8,
-    pub country: String,
     pub as_number: u32,
+    pub country: String,
     pub owner: String,
 }
 
@@ -138,6 +138,7 @@ pub struct Db(Vec<Record>);
 #[derive(Debug)]
 pub enum DbError {
     TsvError(TsvParseError),
+    DbDataError(&'static str),
     FileError(io::Error, &'static str),
     BincodeError(bincode::Error, &'static str),
 }
@@ -154,6 +155,7 @@ impl fmt::Display for DbError {
                 "error (de)serializing ASN DB to bincode format while {}",
                 context
             ),
+            DbError::DbDataError(message) => write!(f, "error while reading database: {}", message),
         }
     }
 }
@@ -164,6 +166,7 @@ impl Error for DbError {
             DbError::TsvError(err) => Some(err),
             DbError::FileError(err, _) => Some(err),
             DbError::BincodeError(err, _) => Some(err),
+            DbError::DbDataError(_) => None,
         }
     }
 }
@@ -188,30 +191,38 @@ impl From<ErrorContext<bincode::Error, &'static str>> for DbError {
 
 //TODO: write data file and mmap it so we don't waste memory
 impl Db {
-    //TODO: Read and Write not paths
-    pub fn form_tsv_file(path: impl AsRef<Path>) -> Result<Db, DbError> {
+    pub fn form_tsv_file(data: impl Read) -> Result<Db, DbError> {
         let mut rdr = csv::ReaderBuilder::new()
             .delimiter(b'\t')
-            .from_reader(BufReader::new(
-                File::open(path).wrap_error_while("opending TSV file")?,
-            ));
+            .from_reader(data);
         let mut records = read_asn_tsv(&mut rdr).collect::<Result<Vec<_>, _>>()?;
         records.sort_by_key(|record| record.ip);
         Ok(Db(records))
     }
 
-    pub fn from_stored_file(path: impl AsRef<Path>) -> Result<Db, DbError> {
-        let db_file = File::open(&path).wrap_error_while("opening stored ASN DB file")?;
-        let records: Vec<Record> = deserialize_from(BufReader::new(db_file))
+    pub fn load(mut db_data: impl Read) -> Result<Db, DbError> {
+        let mut tag = [0; 4];
+        db_data.read_exact(&mut tag).wrap_error_while("reading database tag")?;
+        if &tag != DATABASE_DATA_TAG {
+            return Err(DbError::DbDataError("bad database data tag"))
+        }
+
+        let mut version = [0; 4];
+        db_data.read_exact(&mut version).wrap_error_while("reading database version")?;
+        if &version != DATABASE_DATA_VERSION {
+            return Err(DbError::DbDataError("unsuported database version"))
+        }
+
+        let records: Vec<Record> = deserialize_from(db_data)
             .wrap_error_while("reading bincode DB file")?;
+
         Ok(Db(records))
     }
 
-    // TODO: write 4 byts ID "ASDB" + 4 byte version (for allignment)
-    pub fn store(&self, path: impl AsRef<Path>) -> Result<(), DbError> {
-        let path = path.as_ref();
-        let db_file = File::create(&path).wrap_error_while("creating ASN DB file for storage")?;
-        serialize_into(BufWriter::new(db_file), &self.0).wrap_error_while("stroing DB")?;
+    pub fn store(&self, mut db_data: impl Write) -> Result<(), DbError> {
+        db_data.write(DATABASE_DATA_TAG).wrap_error_while("error writing tag")?;
+        db_data.write(DATABASE_DATA_VERSION).wrap_error_while("error writing version")?;
+        serialize_into(db_data, &self.0).wrap_error_while("stroing DB")?;
         Ok(())
     }
 
@@ -234,10 +245,12 @@ impl Db {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs::File;
+    use std::io::BufReader;
 
     #[test]
     fn test_lookup() {
-        let db = Db::from_stored_file("db.bincode").unwrap();
+        let db = Db::load(BufReader::new(File::open("db.bincode").unwrap())).unwrap();
         assert!(db
             .lookup("1.1.1.1".parse().unwrap())
             .unwrap()

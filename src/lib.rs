@@ -26,8 +26,7 @@ impl AsnRecord {
     }
 }
 
-#[derive(Debug)]
-pub enum AsnTsvParseError {
+#[derive(Debug)] pub enum AsnTsvParseError {
     TsvError(csv::Error),
     AddrFieldParseError(std::net::AddrParseError, &'static str),
     IntFieldParseError(std::num::ParseIntError, &'static str),
@@ -120,7 +119,10 @@ pub fn read_asn_tsv<'d, R: io::Read>(data: &'d mut csv::Reader<R>) -> impl Itera
         })
 }
 
-pub struct AsnDb(Vec<AsnRecord>);
+// TODO: try loading ip vec separately for search
+// TODO: use stdlib search?
+// TODO: use eytzinger layout
+pub struct AsnDb(Vec<AsnRecord>, Vec<u32>);
 
 #[derive(Debug)]
 pub enum AsnDbError {
@@ -167,21 +169,36 @@ impl From<ErrorContext<bincode::Error, &'static str>> for AsnDbError {
     }
 }
 
+//TODO: write data file and mmap it so we don't waste memory
+//TODO: remove Asn prefix
 impl AsnDb {
+    //TODO: Read and Write not paths
     pub fn form_tsv_file(path: impl AsRef<Path>) -> Result<AsnDb, AsnDbError> {
         let mut rdr = csv::ReaderBuilder::new().delimiter(b'\t').from_reader(BufReader::new(File::open(path).wrap_error_while("opending TSV file")?));
         let mut records = read_asn_tsv(&mut rdr).collect::<Result<Vec<_>, _>>()?;
         records.sort_by_key(|record| record.ip);
-        Ok(AsnDb(records))
+        let index = records.iter().map(|r| r.ip).collect();
+        Ok(AsnDb(records, index))
     }
 
     pub fn from_stored_file(path: impl AsRef<Path>) -> Result<AsnDb, AsnDbError> {
         let db_file = File::open(&path).wrap_error_while("opening stored ASN DB file")?;
-        Ok(AsnDb(deserialize_from(BufReader::new(db_file)).wrap_error_while("reading bincode DB file")?))
+        let records: Vec<AsnRecord> = deserialize_from(BufReader::new(db_file)).wrap_error_while("reading bincode DB file")?;
+        let index = records.iter().map(|r| r.ip).collect();
+        Ok(AsnDb(records, index))
+    }
+
+    // TODO: write 4 byts ID "ASDB" + 4 byte version (for allignment)
+    pub fn store(&self, path: impl AsRef<Path>) -> Result<(), AsnDbError> {
+        let path = path.as_ref();
+        let db_file = File::create(&path).wrap_error_while("creating ASN DB file for storage")?;
+        serialize_into(BufWriter::new(db_file), &self.0).wrap_error_while("stroing DB")?;
+        Ok(())
     }
 
     pub fn lookup(&self, ip: Ipv4Addr) -> Option<&AsnRecord> {
-        let index = self.0.upper_bound_by_key(&ip.into(), |record| record.ip);
+        //TODO: is this correct?
+        let index = self.1.upper_bound(&ip.into());
         if index != 0 {
             let record = &self.0[index - 1];
             if record.network().contains(&ip) {
@@ -189,13 +206,6 @@ impl AsnDb {
             }
         }
         None
-    }
-
-    pub fn store(&self, path: impl AsRef<Path>) -> Result<(), AsnDbError> {
-        let path = path.as_ref();
-        let db_file = File::create(&path).wrap_error_while("creating ASN DB file for storage")?;
-        serialize_into(BufWriter::new(db_file), &self.0).wrap_error_while("stroing DB")?;
-        Ok(())
     }
 }
 

@@ -1,6 +1,16 @@
 use asn_db::Db;
 use criterion::*;
 
+fn bench_load(c: &mut Criterion) {
+    c.bench(
+        "AnsDb",
+        Benchmark::new("load", move |b| {
+            b.iter_with_large_drop(|| Db::from_stored_file("db.bincode").unwrap())
+        })
+        .sample_size(10),
+    );
+}
+
 fn bench_lookup(c: &mut Criterion) {
     let db = Db::from_stored_file("db.bincode").unwrap();
     let ips = [
@@ -125,5 +135,5 @@ fn bench_lookup(c: &mut Criterion) {
     );
 }
 
-criterion_group!(benches, bench_lookup);
+criterion_group!(benches, bench_load, bench_lookup);
 criterion_main!(benches);

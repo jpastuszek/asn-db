@@ -16,5 +16,5 @@ error-context = "0.1.0"
 criterion = "0.2.9"
 
 [[bench]]
-name = "lookup"
+name = "db"
 harness = false

@@ -1,8 +1,8 @@
-use asn_db::AsnDb;
+use asn_db::Db;
 use criterion::*;
 
 fn bench_lookup(c: &mut Criterion) {
-    let db = AsnDb::from_stored_file("db.bincode").unwrap();
+    let db = Db::from_stored_file("db.bincode").unwrap();
     let ips = [
         "41.233.24.141",
         "113.195.171.20",

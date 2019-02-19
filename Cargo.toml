@@ -1,7 +1,12 @@
 [package]
 name = "asn-db"
 version = "0.1.0"
-authors = ["Jakub Pastuszek <jpastuszek@gmail.com>"]
+authors = ["Jakub Pastuszek <jpastuszek@protonmail.com>"]
+description = "Look up IP address for matching ASN information in database from https://iptoasn.com/"
+readme = "README.md"
+keywords = ["asn", "ip", "database"]
+categories = ["database", "network-programming"]
+license = "MIT"
 edition = "2018"
 
 [dependencies]

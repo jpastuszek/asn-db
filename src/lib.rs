@@ -1,12 +1,11 @@
 /*!
-Look up ASN information by IP address containing:
-* network base IP address and mask (u32 number in host byte order and number of bits of netmask or `ipnet::Ipv4Net` value),
+Look up IP address for matching ASN record that contains:
+* network base IP address and mask (e.g. `ipnet::Ipv4Net` value like 1.1.1.0/24),
 * assigned AS number (e.g. 13335),
 * owner country code (e.g. "US"),
 * owner information (e.g. "CLOUDFLARENET - Cloudflare, Inc.").
 
 # Example
-
 Load database from `ip2asn-v4.tsv` file and look up `1.1.1.1` IP address.
 
 ```rust
@@ -34,7 +33,6 @@ Record {
 ```
 
 # Usage
-
 Use `Db::from_tsv(reader)` to load database from `ip2asn-v4.tsv` formatted file.
 You can then use `db.store(writer)` to store prepared, binary encoded data for fast loading with `Db::load(reader)`.
 
@@ -57,7 +55,7 @@ const DATABASE_DATA_VERSION: &[u8; 4] = b"bin1";
 /// Autonomous system number record
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Record {
-    /// Network base IP address (as u32 in host byte order)
+    /// Network base IP address (host byte order)
     pub ip: u32,
     /// Network mask prefix in number of bits, e.g. 24 for 255.255.255.0 mask
     pub prefix_len: u8,

@@ -1,13 +1,12 @@
-Rust library that allows to look up ASN information by IP address containing:
-* network base IP address and mask (u32 number in host byte order and number of bits of netmask or `ipnet::Ipv4Net` value),
+This Rust library can be used to look up IP address for matching ASN record that contains:
+* network base IP address and mask (e.g. `ipnet::Ipv4Net` value like 1.1.1.0/24),
 * assigned AS number (e.g. 13335),
 * owner country code (e.g. "US"),
 * owner information (e.g. "CLOUDFLARENET - Cloudflare, Inc.").
 
-This crate requires data file `ip2asn-v4.tsv` from [IPtoASN](https://iptoasn.com/) and only supports IP v4 addresses.
+This crate requires data file `ip2asn-v4.tsv` from [IPtoASN](https://iptoasn.com/) and only supports IP v4 addresses (PR for v6 is welcome).
 
 # Example
-
 Load database from `ip2asn-v4.tsv` file and look up `1.1.1.1` IP address.
 
 ```rust
@@ -33,3 +32,7 @@ Record {
 }
 1.1.1.0/24
 ```
+
+Note that this library also provides methods of storing the database in binary format for quicker load times.
+
+See documentation for details at [docs.rs](https://docs.rs/asn-db).

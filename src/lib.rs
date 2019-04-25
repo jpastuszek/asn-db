@@ -45,6 +45,7 @@ use std::error::Error;
 use std::fmt;
 use std::io;
 use std::io::{Read, Write};
+use std::cmp::Ordering;
 use ipnet::Ipv4Subnets;
 pub use std::net::Ipv4Addr;
 pub use ipnet::Ipv4Net;
@@ -53,7 +54,7 @@ const DATABASE_DATA_TAG: &[u8; 4] = b"ASDB";
 const DATABASE_DATA_VERSION: &[u8; 4] = b"bin1";
 
 /// Autonomous system number record
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Record {
     /// Network base IP address (host byte order)
     pub ip: u32,
@@ -65,6 +66,26 @@ pub struct Record {
     pub country: String,
     /// Network owner information
     pub owner: String,
+}
+
+impl PartialEq for Record {
+    fn eq(&self, other: &Record) -> bool {
+        self.ip == other.ip && self.prefix_len == other.prefix_len
+    }
+}
+
+impl Eq for Record {}
+
+impl Ord for Record {
+    fn cmp(&self, other: &Record) -> Ordering {
+        self.ip.cmp(&other.ip)
+    }
+}
+
+impl PartialOrd for Record {
+    fn partial_cmp(&self, other: &Record) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl Record {
@@ -252,7 +273,7 @@ impl Db {
             .has_headers(false)
             .from_reader(data);
         let mut records = read_asn_tsv(&mut rdr).collect::<Result<Vec<_>, _>>()?;
-        records.sort_by_key(|record| record.ip);
+        records.sort();
         Ok(Db(records))
     }
 

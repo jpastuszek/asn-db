@@ -1,6 +1,7 @@
 [![Latest Version]][crates.io] [![Documentation]][docs.rs] ![License]
 
 This Rust library can be used to look up IP address for matching ASN record that contains:
+
 * network base IP address and mask (e.g. `ipnet::Ipv4Net` value like 1.1.1.0/24),
 * assigned AS number (e.g. 13335),
 * owner country code (e.g. "US"),

@@ -1,6 +1,6 @@
 [![Latest Version]][crates.io] [![Documentation]][docs.rs] ![License]
 
-This Rust library can be used to look up IP address for matching ASN record that contains:
+This Rust library can be used to lookup an IP address for matching ASN record that contains:
 
 * network base IP address and mask (e.g. `ipnet::Ipv4Net` value like 1.1.1.0/24),
 * assigned AS number (e.g. 13335),
@@ -10,7 +10,7 @@ This Rust library can be used to look up IP address for matching ASN record that
 This crate requires data file `ip2asn-v4.tsv` from [IPtoASN](https://iptoasn.com/) and only supports IP v4 addresses (PR for v6 is welcome).
 
 # Example
-Load database from `ip2asn-v4.tsv` file and look up `1.1.1.1` IP address.
+Load database from `ip2asn-v4.tsv` file and lookup `1.1.1.1` IP address.
 
 ```rust
 use asn_db::Db;
@@ -36,7 +36,7 @@ Record {
 1.1.1.0/24
 ```
 
-Note that this library also provides methods of storing the database in binary format for quicker load times.
+Note that this library also provides methods for storing the database in binary format for quicker load times.
 
 See documentation for details at [docs.rs](https://docs.rs/asn-db).
 

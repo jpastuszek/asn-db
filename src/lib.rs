@@ -1,12 +1,12 @@
 /*!
-Look up IP address for matching ASN record that contains:
+Lookup an IP address for matching ASN record that contains:
 * network base IP address and mask (e.g. `ipnet::Ipv4Net` value like 1.1.1.0/24),
 * assigned AS number (e.g. 13335),
 * owner country code (e.g. "US"),
 * owner information (e.g. "CLOUDFLARENET - Cloudflare, Inc.").
 
 # Example
-Load database from `ip2asn-v4.tsv` file and look up `1.1.1.1` IP address.
+Load database from `ip2asn-v4.tsv` file and lookup `1.1.1.1` IP address.
 
 ```rust
 use asn_db::Db;

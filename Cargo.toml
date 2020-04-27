@@ -2,7 +2,7 @@
 name = "asn-db"
 version = "0.1.3-alpha.0"
 authors = ["Jakub Pastuszek <jpastuszek@protonmail.com>"]
-description = "Look up IP address for matching ASN information in database from https://iptoasn.com/"
+description = "Lookup an IP address for matching ASN information in the database from https://iptoasn.com/"
 repository = "https://github.com/jpastuszek/asn-db"
 documentation = "https://docs.rs/asn-db"
 readme = "README.md"

@@ -1,15 +1,19 @@
 [![Latest Version]][crates.io] [![Documentation]][docs.rs] ![License]
 
-This Rust library can be used to lookup an IP address for matching ASN record that contains:
+`asn-db` is a Rust library that can load and index [ASN] database (`ip2asn-v4.tsv` file) from [IPtoASN] website.
 
-* network base IP address and mask (e.g. `ipnet::Ipv4Net` value like 1.1.1.0/24),
-* assigned AS number (e.g. 13335),
-* owner country code (e.g. "US"),
-* owner information (e.g. "CLOUDFLARENET - Cloudflare, Inc.").
+Once loaded it can be used to lookup an IP address for matching [ASN] record that contains:
 
-This crate requires data file `ip2asn-v4.tsv` from [IPtoASN](https://iptoasn.com/) and only supports IP v4 addresses (PR for v6 is welcome).
+* network base IP address and mask (e.g. [ipnet::Ipv4Net](https://docs.rs/ipnet/2.3.0/ipnet/struct.Ipv4Net.html) value like `1.1.1.0/24`),
+* assigned AS number (e.g. `13335`),
+* owner country code (e.g. `US`),
+* owner information (e.g. `CLOUDFLARENET - Cloudflare, Inc.`).
+
+It is also possible to write and then read optimized binary representation of the database to a file for fast load times.
+Note that at this time only IPv4 records are supported.
 
 # Example
+
 Load database from `ip2asn-v4.tsv` file and lookup `1.1.1.1` IP address.
 
 ```rust
@@ -36,10 +40,8 @@ Record {
 1.1.1.0/24
 ```
 
-Note that this library also provides methods for storing the database in binary format for quicker load times.
-
-See documentation for details at [docs.rs](https://docs.rs/asn-db).
-
+[ASN]: https://en.wikipedia.org/wiki/Autonomous_system_%28Internet%29#Assignment
+[IPtoASN]: https://iptoasn.com/
 [crates.io]: https://crates.io/crates/asn-db
 [Latest Version]: https://img.shields.io/crates/v/asn-db.svg
 [Documentation]: https://docs.rs/asn-db/badge.svg

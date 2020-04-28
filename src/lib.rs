@@ -1,11 +1,14 @@
 /*!
-Lookup an IP address for matching ASN record that contains:
-* network base IP address and mask (e.g. `ipnet::Ipv4Net` value like 1.1.1.0/24),
-* assigned AS number (e.g. 13335),
-* owner country code (e.g. "US"),
-* owner information (e.g. "CLOUDFLARENET - Cloudflare, Inc.").
+`asn-db` is a Rust library that can load and index [ASN] database (`ip2asn-v4.tsv` file) from [IPtoASN] website.
+Once loaded it can be used to lookup an IP address for matching [ASN] record that contains:
+
+* network base IP address and mask (e.g. [ipnet::Ipv4Net](https://docs.rs/ipnet/2.3.0/ipnet/struct.Ipv4Net.html) value like `1.1.1.0/24`),
+* assigned AS number (e.g. `13335`),
+* owner country code (e.g. `US`),
+* owner information (e.g. `CLOUDFLARENET - Cloudflare, Inc.`).
 
 # Example
+
 Load database from `ip2asn-v4.tsv` file and lookup `1.1.1.1` IP address.
 
 ```rust
@@ -33,10 +36,14 @@ Record {
 ```
 
 # Usage
-Use `Db::from_tsv(reader)` to load database from `ip2asn-v4.tsv` formatted file.
-You can then use `db.store(writer)` to store prepared, binary encoded data for fast loading with `Db::load(reader)`.
 
-Look up records with `db.lookup(ip)`.
+Use `Db::from_tsv(data)` to load database from `ip2asn-v4.tsv` data.
+You can then use `db.store(out)` to store the binary encoded data index for fast loading with `Db::load(reader)`.
+
+Use `db.lookup(ip)` to lookup for matching record by an IP address.
+
+[ASN]: https://en.wikipedia.org/wiki/Autonomous_system_%28Internet%29#Assignment
+[IPtoASN]: https://iptoasn.com/
 */
 use bincode::{deserialize_from, serialize_into};
 use error_context::*;
@@ -53,18 +60,18 @@ pub use ipnet::Ipv4Net;
 const DATABASE_DATA_TAG: &[u8; 4] = b"ASDB";
 const DATABASE_DATA_VERSION: &[u8; 4] = b"bin1";
 
-/// Autonomous system number record
+/// Autonomous System number record.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Record {
-    /// Network base IP address (host byte order)
+    /// Network base IP address (host byte order).
     pub ip: u32,
-    /// Network mask prefix in number of bits, e.g. 24 for 255.255.255.0 mask
+    /// Network mask prefix in number of bits, e.g. 24 for 255.255.255.0 mask.
     pub prefix_len: u8,
-    /// Assigned AS number
+    /// Assigned AS number.
     pub as_number: u32,
-    /// Country code of network owner
+    /// Country code of network owner.
     pub country: String,
-    /// Network owner information
+    /// Network owner information.
     pub owner: String,
 }
 
@@ -89,7 +96,7 @@ impl PartialOrd for Record {
 }
 
 impl Record {
-    /// Get `Ipv4Net` representation of the network address
+    /// Gets `Ipv4Net` representation of the network address.
     pub fn network(&self) -> Ipv4Net {
         Ipv4Net::new(self.ip.into(), self.prefix_len).expect("bad network")
     }
@@ -144,7 +151,7 @@ impl From<ErrorContext<std::num::ParseIntError, &'static str>> for TsvParseError
     }
 }
 
-/// Reads ASN database TSV file (`ip2asn-v4.tsv` format) provided by [IPtoASN](https://iptoasn.com/) as iterator of `Record`s
+/// Reads ASN database TSV file (`ip2asn-v4.tsv` format) provided by [IPtoASN](https://iptoasn.com/) as iterator of `Record`s.
 pub fn read_asn_tsv<'d, R: io::Read>(
     data: &'d mut csv::Reader<R>,
 ) -> impl Iterator<Item = Result<Record, TsvParseError>> + 'd {
@@ -253,10 +260,10 @@ impl From<ErrorContext<bincode::Error, &'static str>> for DbError {
     }
 }
 
-//TODO: use eytzinger layout - requires non exact search support
-//TODO: support for mmap'ed files to reduce memory usage?
-//TODO: IPv6 support
-/// Loaded ASN database that is optimized for looking up ASN by IP address
+//TODO: Use eytzinger layout - requires non exact search support.
+//TODO: Support for mmap'ed files to reduce memory usage?
+//TODO: IPv6 support.
+/// ASN record database that is optimized for lookup by an IP address.
 pub struct Db(Vec<Record>);
 
 impl fmt::Debug for Db {
@@ -266,7 +273,7 @@ impl fmt::Debug for Db {
 }
 
 impl Db {
-    /// Load database from TSV file as provided by [IPtoASN](https://iptoasn.com/) - only `ip2asn-v4.tsv` file format is supported a the moment
+    /// Loads database from ASN data as provided by [IPtoASN](https://iptoasn.com/) - the only supported file format is of `ip2asn-v4.tsv` file.
     pub fn form_tsv(data: impl Read) -> Result<Db, DbError> {
         let mut rdr = csv::ReaderBuilder::new()
             .delimiter(b'\t')
@@ -277,7 +284,7 @@ impl Db {
         Ok(Db(records))
     }
 
-    /// Load previously stored database - this method is much faster than loading TSV file
+    /// Loads database from the binary index that was stored with `.store()` - this method is much faster than loading from the TSV file.
     pub fn load(mut db_data: impl Read) -> Result<Db, DbError> {
         let mut tag = [0; 4];
         db_data.read_exact(&mut tag).wrap_error_while("reading database tag")?;
@@ -297,7 +304,7 @@ impl Db {
         Ok(Db(records))
     }
 
-    /// Store database as binary data
+    /// Stores database as a binary index for fast loading with `.load()`.
     pub fn store(&self, mut db_data: impl Write) -> Result<(), DbError> {
         db_data.write(DATABASE_DATA_TAG).wrap_error_while("error writing tag")?;
         db_data.write(DATABASE_DATA_VERSION).wrap_error_while("error writing version")?;
@@ -305,7 +312,7 @@ impl Db {
         Ok(())
     }
 
-    /// Lookup ASN information by IP address where given IP belongs to AS network
+    /// Performs lookup by an IP address for the ASN `Record` of which network this IP belongs to.
     pub fn lookup(&self, ip: Ipv4Addr) -> Option<&Record> {
         match self.0.binary_search_by_key(&ip.into(), |record| record.ip) {
             Ok(index) => return Some(&self.0[index]), // IP was network base IP

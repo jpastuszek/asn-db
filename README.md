@@ -29,6 +29,7 @@ println!("{:#?}", record.network());
 ```
 
 This prints:
+
 ```noformat
 Record {
     ip: 16843008,

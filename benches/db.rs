@@ -1,7 +1,7 @@
 use asn_db::Db;
 use criterion::*;
 use std::fs::File;
-use std::io::{Read, BufReader};
+use std::io::{BufReader, Read};
 
 fn db_data() -> impl Read {
     BufReader::new(File::open("asn-db.dat").unwrap())
@@ -142,13 +142,17 @@ fn bench_lookup_list(c: &mut Criterion) {
 }
 
 fn bench_lookup_random(c: &mut Criterion) {
-    use rand::Rng;
     use rand::distributions::Standard;
+    use rand::Rng;
     use std::net::Ipv4Addr;
 
     let db = Db::load(db_data()).unwrap();
     let ips_count = 10_000;
-    let ips = rand::thread_rng().sample_iter(&Standard).take(ips_count).map(|v: u32| Ipv4Addr::from(v)).collect::<Vec<_>>();
+    let ips = rand::thread_rng()
+        .sample_iter(&Standard)
+        .take(ips_count)
+        .map(|v: u32| Ipv4Addr::from(v))
+        .collect::<Vec<_>>();
 
     c.bench(
         "AnsDb",

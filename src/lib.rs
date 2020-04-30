@@ -48,15 +48,15 @@ Use `db.lookup(ip)` to lookup for matching record by an IP address.
 */
 use bincode::{deserialize_from, serialize_into};
 use error_context::*;
+pub use ipnet::Ipv4Net;
+use ipnet::Ipv4Subnets;
 use serde_derive::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::error::Error;
 use std::fmt;
 use std::io;
 use std::io::{Read, Write};
-use std::cmp::Ordering;
-use ipnet::Ipv4Subnets;
 pub use std::net::Ipv4Addr;
-pub use ipnet::Ipv4Net;
 
 const DATABASE_DATA_TAG: &[u8; 4] = b"ASDB";
 const DATABASE_DATA_VERSION: &[u8; 4] = b"bin1";
@@ -288,27 +288,35 @@ impl Db {
     /// Loads database from the binary index that was stored with `.store()` - this method is much faster than loading from the TSV file.
     pub fn load(mut db_data: impl Read) -> Result<Db, DbError> {
         let mut tag = [0; 4];
-        db_data.read_exact(&mut tag).wrap_error_while("reading database tag")?;
+        db_data
+            .read_exact(&mut tag)
+            .wrap_error_while("reading database tag")?;
         if &tag != DATABASE_DATA_TAG {
-            return Err(DbError::DbDataError("bad database data tag"))
+            return Err(DbError::DbDataError("bad database data tag"));
         }
 
         let mut version = [0; 4];
-        db_data.read_exact(&mut version).wrap_error_while("reading database version")?;
+        db_data
+            .read_exact(&mut version)
+            .wrap_error_while("reading database version")?;
         if &version != DATABASE_DATA_VERSION {
-            return Err(DbError::DbDataError("unsuported database version"))
+            return Err(DbError::DbDataError("unsuported database version"));
         }
 
-        let records: Vec<Record> = deserialize_from(db_data)
-            .wrap_error_while("reading bincode DB file")?;
+        let records: Vec<Record> =
+            deserialize_from(db_data).wrap_error_while("reading bincode DB file")?;
 
         Ok(Db(records))
     }
 
     /// Stores database as a binary index for fast loading with `.load()`.
     pub fn store(&self, mut db_data: impl Write) -> Result<(), DbError> {
-        db_data.write(DATABASE_DATA_TAG).wrap_error_while("error writing tag")?;
-        db_data.write(DATABASE_DATA_VERSION).wrap_error_while("error writing version")?;
+        db_data
+            .write(DATABASE_DATA_TAG)
+            .wrap_error_while("error writing tag")?;
+        db_data
+            .write(DATABASE_DATA_VERSION)
+            .wrap_error_while("error writing version")?;
         serialize_into(db_data, &self.0).wrap_error_while("stroing DB")?;
         Ok(())
     }
@@ -317,7 +325,8 @@ impl Db {
     pub fn lookup(&self, ip: Ipv4Addr) -> Option<&Record> {
         match self.0.binary_search_by_key(&ip.into(), |record| record.ip) {
             Ok(index) => return Some(&self.0[index]), // IP was network base IP
-            Err(index) => { // upper bound/insert index
+            Err(index) => {
+                // upper bound/insert index
                 if index != 0 {
                     let record = &self.0[index - 1];
                     if record.network().contains(&ip) {
@@ -360,7 +369,8 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let db_file = temp_dir.path().join("asn-db.dat");
 
-        db.store(BufWriter::new(File::create(&db_file).unwrap())).unwrap();
+        db.store(BufWriter::new(File::create(&db_file).unwrap()))
+            .unwrap();
 
         let db = Db::load(BufReader::new(File::open(&db_file).unwrap())).unwrap();
 

@@ -1,6 +1,6 @@
 [package]
 name = "asn-db"
-version = "0.1.3"
+version = "0.1.4-alpha.0"
 authors = ["Jakub Pastuszek <jpastuszek@protonmail.com>"]
 description = "Lookup an IP address for matching ASN information in the database from https://iptoasn.com/"
 repository = "https://github.com/jpastuszek/asn-db"

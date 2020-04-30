@@ -179,31 +179,33 @@ pub fn read_asn_tsv<'d, R: io::Read>(
                 Ok((range_start, range_end, as_number, country, owner))
             })
         })
-        .map(|data| {
-            data.map(|(range_start, range_end, as_number, country, owner)| {
-                Ipv4Subnets::new(range_start, range_end, 8).map(move |net| Record {
-                    ip: net.network().into(),
-                    prefix_len: net.prefix_len(),
+        .map(|record| {
+            record.map(|(range_start, range_end, as_number, country, owner)| {
+                // Convert range into one or more subnets iterator
+                Ipv4Subnets::new(range_start, range_end, 8).map(move |subnet| Record {
+                    ip: subnet.network().into(),
+                    prefix_len: subnet.prefix_len(),
                     country: country.clone(),
                     as_number,
                     owner: owner.clone(),
                 })
             })
         })
-        .flat_map(|data| {
+        .flat_map(|subnet_records| {
+            // Flatten many records or single error
             let mut records = None;
-            let mut errors = None;
+            let mut error = None;
 
-            match data {
-                Ok(data) => records = Some(data),
-                Err(err) => errors = Some(TsvParseError::from(err)),
+            match subnet_records {
+                Ok(subnet_records) => records = Some(subnet_records),
+                Err(err) => error = Some(TsvParseError::from(err)),
             }
 
             records
                 .into_iter()
                 .flatten()
                 .map(Ok)
-                .chain(errors.into_iter().map(Err))
+                .chain(error.into_iter().map(Err))
         })
 }
 

@@ -38,8 +38,8 @@ Record {
 
 # Usage
 
-Use `Db::from_tsv(data)` to load database from `ip2asn-v4.tsv` data.
-You can then use `db.store(out)` to store the binary encoded data index for fast loading with `Db::load(reader)`.
+Use `Db::from_tsv(input)` to load database from `ip2asn-v4.tsv` data.
+You can then use `db.store(output)` to store the binary encoded data index for fast loading with `Db::load(input)`.
 
 Use `db.lookup(ip)` to lookup for matching record by an IP address.
 

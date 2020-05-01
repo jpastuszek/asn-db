@@ -62,7 +62,7 @@ const DATABASE_DATA_TAG: &[u8; 4] = b"ASDB";
 const DATABASE_DATA_VERSION: &[u8; 4] = b"bin1";
 
 /// Autonomous System number record.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, Ord)]
 pub struct Record {
     /// Network base IP address (host byte order).
     pub ip: u32,
@@ -79,14 +79,6 @@ pub struct Record {
 impl PartialEq for Record {
     fn eq(&self, other: &Record) -> bool {
         self.ip == other.ip && self.prefix_len == other.prefix_len
-    }
-}
-
-impl Eq for Record {}
-
-impl Ord for Record {
-    fn cmp(&self, other: &Record) -> Ordering {
-        self.ip.cmp(&other.ip)
     }
 }
 

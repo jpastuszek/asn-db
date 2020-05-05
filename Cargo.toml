@@ -13,12 +13,11 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
-serde_derive = "1.0.85"
 ipnet = "2.0.0"
 bincode = "1.0.1"
-serde = "1.0.85"
 csv = "1.0.5"
 error-context = "0.1.0"
+serde = { version = "1.0.106", features = ["derive"] }
 
 [dev-dependencies]
 criterion = "0.2.9"

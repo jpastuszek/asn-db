@@ -50,7 +50,7 @@ use bincode::{deserialize_from, serialize_into};
 use error_context::*;
 pub use ipnet::Ipv4Net;
 use ipnet::Ipv4Subnets;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::error::Error;
 use std::fmt;

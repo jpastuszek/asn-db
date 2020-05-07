@@ -264,6 +264,7 @@ impl From<ErrorContext<bincode::Error, &'static str>> for DbError {
 //TODO: Use eytzinger layout - requires non exact search support.
 //TODO: Support for mmap'ed files to reduce memory usage?
 //TODO: IPv6 support.
+//TODO: Support providing all subnets of matched range.
 /// ASN record database that is optimized for lookup by an IP address.
 pub struct Db(Vec<Record>);
 
@@ -351,7 +352,17 @@ mod tests {
         let db = Db::form_tsv(BufReader::new(File::open("ip2asn-v4.tsv").unwrap())).unwrap();
 
         assert!(db
+            .lookup("1.1.1.0".parse().unwrap())
+            .unwrap()
+            .owner
+            .contains("CLOUDFLARENET"));
+        assert!(db
             .lookup("1.1.1.1".parse().unwrap())
+            .unwrap()
+            .owner
+            .contains("CSTNET-AS-AP Computer Network Information Center"));
+        assert!(db
+            .lookup("1.1.1.2".parse().unwrap())
             .unwrap()
             .owner
             .contains("CLOUDFLARENET"));
@@ -378,7 +389,17 @@ mod tests {
         drop(temp_dir);
 
         assert!(db
+            .lookup("1.1.1.0".parse().unwrap())
+            .unwrap()
+            .owner
+            .contains("CLOUDFLARENET"));
+        assert!(db
             .lookup("1.1.1.1".parse().unwrap())
+            .unwrap()
+            .owner
+            .contains("CSTNET-AS-AP Computer Network Information Center"));
+        assert!(db
+            .lookup("1.1.1.2".parse().unwrap())
             .unwrap()
             .owner
             .contains("CLOUDFLARENET"));
